@@ -99,22 +99,6 @@ const App = () => {
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-[#000714]">
-      {/* UI Overlay */}
-      <div className="absolute top-0 left-0 w-full p-8 flex justify-between items-start pointer-events-none z-10">
-        <div>
-          <h1 className="text-3xl md:text-5xl font-light text-white tracking-[0.2em] opacity-80 drop-shadow-md">
-            OCEANIC
-          </h1>
-          <p className="text-cyan-200 opacity-60 font-medium tracking-wide mt-2 drop-shadow text-sm md:text-base">
-            Procedural Animation & Organic Shading
-          </p>
-        </div>
-        <div className="text-right hidden sm:block">
-          <p className="text-white opacity-40 text-xs uppercase tracking-[0.1em]">
-            No Outline / Gradient Mesh
-          </p>
-        </div>
-      </div>
       {/* Interactive Mode Toggle UI */}
       <div className="absolute top-8 right-8 flex flex-col gap-4 z-20 pointer-events-auto">
         <button
