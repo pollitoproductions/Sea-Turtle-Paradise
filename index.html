@@ -57,6 +57,10 @@
     </button>
   </div>
 
+  <div id="orientationOverlay" class="pointer-events-none absolute inset-0 z-50 flex items-center justify-center bg-black/70 text-white text-center px-6 py-4 text-lg tracking-wide leading-relaxed opacity-0 transition-opacity duration-300">
+    Please rotate your device to <span class="font-semibold">landscape</span> for the best experience.
+  </div>
+
   <canvas id="oceanCanvas"></canvas>
 
   <script>
@@ -75,9 +79,17 @@
     let gainNode = null;
     let isMuted = true;
 
+    function updateOrientationOverlay() {
+      const overlay = document.getElementById('orientationOverlay');
+      if (!overlay) return;
+      const isPortrait = window.innerHeight > window.innerWidth;
+      overlay.style.opacity = isPortrait ? '1' : '0';
+    }
+
     function resizeCanvas() {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
+      updateOrientationOverlay();
     }
 
     function createBrownNoiseBuffer(duration = 2) {
@@ -153,6 +165,20 @@
     });
 
     updateMuteUI();
+
+    function handleVisibilityChange() {
+      if (document.hidden) {
+        if (!isMuted) {
+          stopBrownNoise();
+          isMuted = true;
+          updateMuteUI();
+        }
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleVisibilityChange);
+    window.addEventListener('pagehide', handleVisibilityChange);
 
     const gameState = {
       food: [],
