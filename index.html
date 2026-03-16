@@ -42,6 +42,19 @@
         <ellipse cx="11" cy="15" rx="0.8" ry="0.4" fill="#fff" transform="rotate(270 11 15)"/>
       </svg>
     </button>
+    <button
+      id="muteBtn"
+      class="w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 bg-slate-900/50 border border-slate-600 text-white hover:bg-slate-800/60 shadow-lg"
+      title="Toggle Brown Noise"
+      aria-label="Toggle Brown Noise"
+    >
+      <svg viewBox="0 0 24 24" fill="none" class="w-6 h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 5L6 9H3v6h3l5 4V5z" />
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+        <path d="M19.07 5.93a9 9 0 0 1 0 12.73" />
+        <path id="muteSlash" d="M4 4l16 16" />
+      </svg>
+    </button>
   </div>
 
   <canvas id="oceanCanvas"></canvas>
@@ -54,6 +67,73 @@
     let mode = 'water'; // 'water' or 'food'
     const waterBtn = document.getElementById('waterBtn');
     const foodBtn = document.getElementById('foodBtn');
+    const muteBtn = document.getElementById('muteBtn');
+
+    // --- Brown noise audio ---
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let brownSource = null;
+    let gainNode = null;
+    let isMuted = true;
+
+    function createBrownNoiseBuffer(duration = 2) {
+      const sampleRate = audioCtx.sampleRate;
+      const bufferSize = sampleRate * duration;
+      const buffer = audioCtx.createBuffer(1, bufferSize, sampleRate);
+      const data = buffer.getChannelData(0);
+      let lastOut = 0;
+      for (let i = 0; i < bufferSize; i += 1) {
+        const white = Math.random() * 2 - 1;
+        lastOut = (lastOut + (0.02 * white)) / 1.02;
+        data[i] = lastOut * 3.5;
+      }
+      return buffer;
+    }
+
+    function startBrownNoise() {
+      if (brownSource) return;
+      gainNode = audioCtx.createGain();
+      gainNode.gain.value = 0.15;
+      gainNode.connect(audioCtx.destination);
+
+      brownSource = audioCtx.createBufferSource();
+      brownSource.buffer = createBrownNoiseBuffer(2);
+      brownSource.loop = true;
+      brownSource.connect(gainNode);
+      brownSource.start();
+    }
+
+    function stopBrownNoise() {
+      if (!brownSource) return;
+      brownSource.stop();
+      brownSource.disconnect();
+      gainNode.disconnect();
+      brownSource = null;
+      gainNode = null;
+    }
+
+    function updateMuteUI() {
+      if (isMuted) {
+        muteBtn.classList.remove('text-green-300');
+        muteBtn.classList.add('text-white');
+        muteBtn.querySelector('#muteSlash').style.display = 'block';
+      } else {
+        muteBtn.classList.remove('text-white');
+        muteBtn.classList.add('text-green-300');
+        muteBtn.querySelector('#muteSlash').style.display = 'none';
+      }
+    }
+
+    muteBtn.addEventListener('click', () => {
+      if (isMuted) {
+        startBrownNoise();
+      } else {
+        stopBrownNoise();
+      }
+      isMuted = !isMuted;
+      updateMuteUI();
+    });
+
+    updateMuteUI();
 
     const gameState = {
       food: [],
