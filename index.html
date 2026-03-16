@@ -64,9 +64,6 @@
     const canvas = document.getElementById('oceanCanvas');
     const ctx = canvas.getContext('2d');
 
-    let canvasWidth = window.innerWidth;
-    let canvasHeight = window.innerHeight;
-
     let mode = 'water'; // 'water' or 'food'
     const waterBtn = document.getElementById('waterBtn');
     const foodBtn = document.getElementById('foodBtn');
@@ -78,43 +75,9 @@
     let gainNode = null;
     let isMuted = true;
 
-    // --- Orientation / resizing helpers ---
-    function updateOrientationLock() {
-      // Try to keep landscape view on mobile browsers that support orientation lock
-      if (screen.orientation && screen.orientation.lock) {
-        screen.orientation.lock('landscape').catch(() => {
-          // ignore failures (e.g. not in fullscreen)
-        });
-      }
-    }
-
-    function applyResizeScaling(newWidth, newHeight) {
-      const scaleX = newWidth / canvasWidth;
-      const scaleY = newHeight / canvasHeight;
-
-      // Scale positions so elements stay in place after resize
-      particles.forEach(p => { p.x *= scaleX; p.y *= scaleY; });
-      turtles.forEach(t => { t.x *= scaleX; t.y *= scaleY; });
-      gameState.food.forEach(f => { f.x *= scaleX; f.y *= scaleY; });
-      gameState.waves.forEach(w => { w.x *= scaleX; w.y *= scaleY; });
-
-      gameState.lastX *= scaleX;
-      gameState.lastY *= scaleY;
-
-      canvasWidth = newWidth;
-      canvasHeight = newHeight;
-    }
-
     function resizeCanvas() {
-      const newWidth = window.innerWidth;
-      const newHeight = window.innerHeight;
-
-      applyResizeScaling(newWidth, newHeight);
-
-      canvas.width = canvasWidth;
-      canvas.height = canvasHeight;
-
-      updateOrientationLock();
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
     }
 
     function createBrownNoiseBuffer(duration = 2) {
