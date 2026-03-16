@@ -570,13 +570,31 @@
 
       // 5. Turtles
       turtles.forEach(t => {
+
         let isAvoidingEdge = false;
         let foundFood = false;
+        let scaredByWave = false;
 
-        if (gameState.food.length > 0) {
+
+        // Check for nearby waves and scare turtles away
+        let nearestWaveDist = Infinity;
+        let nearestWave = null;
+        gameState.waves.forEach(w => {
+          const dist = Math.hypot(w.x - t.x, w.y - t.y);
+          if (dist < nearestWaveDist) {
+            nearestWaveDist = dist;
+            nearestWave = w;
+          }
+        });
+        if (nearestWave && nearestWaveDist < 120) {
+          scaredByWave = true;
+          t.targetAngle = Math.atan2(t.y - nearestWave.y, t.x - nearestWave.x);
+          t.speed = t.baseSpeed * 3.5;
+        }
+
+        if (!scaredByWave && gameState.food.length > 0) {
           let nearestFood = null;
           let nearestDist = Infinity;
-          
           gameState.food.forEach((f, index) => {
             const dist = Math.hypot(f.x - t.x, f.y - t.y);
             if (dist < nearestDist) {
@@ -584,12 +602,10 @@
               nearestFood = { f, index };
             }
           });
-
           if (nearestFood && nearestDist < 1200) {
             foundFood = true;
             t.targetAngle = Math.atan2(nearestFood.f.y - t.y, nearestFood.f.x - t.x);
             t.speed = t.baseSpeed * 4.5;
-            
             if (nearestDist < 60 * t.scaleMult) {
                gameState.food.splice(nearestFood.index, 1);
             }
