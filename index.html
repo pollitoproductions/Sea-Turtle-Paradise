@@ -603,9 +603,9 @@
         }
         
 
-        // Restore original margin so turtles stay mostly on screen
-        const marginX = Math.min(width * 0.25, 220 * t.scaleMult);
-        const marginY = Math.min(height * 0.25, 220 * t.scaleMult);
+        // Reduce margin so turtles can wander farther off screen
+        const marginX = Math.min(width * 0.05, 44 * t.scaleMult);
+        const marginY = Math.min(height * 0.05, 44 * t.scaleMult);
 
         if (t.x < marginX || t.x > width - marginX || t.y < marginY || t.y > height - marginY) {
           isAvoidingEdge = true;
@@ -621,9 +621,8 @@
         t.y += Math.sin(t.angle) * t.speed * dt;
 
 
-        // Restore original padding so turtles stay visible
-        // Allow turtles to wander about 20% farther off screen
-        const padding = Math.min(width * 0.08, height * 0.08, 72 * t.scaleMult) * -1;
+        // Increase negative padding so turtles can go off screen by about 20%
+        const padding = Math.max(width, height) * 0.2 * -1;
         t.x = Math.max(padding, Math.min(width - padding, t.x));
         t.y = Math.max(padding, Math.min(height - padding, t.y));
 
