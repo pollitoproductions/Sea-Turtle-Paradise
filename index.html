@@ -64,6 +64,13 @@
     const canvas = document.getElementById('oceanCanvas');
     const ctx = canvas.getContext('2d');
 
+    // Lock the internal simulation size to initial orientation, so turtles/etc. don't shift
+    // when the device rotates (even though the canvas will still fill the screen).
+    const baseWidth = window.innerWidth;
+    const baseHeight = window.innerHeight;
+    canvas.width = baseWidth;
+    canvas.height = baseHeight;
+
     let mode = 'water'; // 'water' or 'food'
     const waterBtn = document.getElementById('waterBtn');
     const foodBtn = document.getElementById('foodBtn');
@@ -76,8 +83,10 @@
     let isMuted = true;
 
     function resizeCanvas() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      // Keep internal simulation dimensions fixed (baseWidth/baseHeight), but let the canvas
+      // scale to fill the visible viewport so the UI stays fullscreen.
+      canvas.style.width = `${window.innerWidth}px`;
+      canvas.style.height = `${window.innerHeight}px`;
     }
 
     function createBrownNoiseBuffer(duration = 2) {
