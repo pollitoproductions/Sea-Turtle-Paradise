@@ -222,6 +222,17 @@
       lightTeal: { backFinBase: '#48d1cc', backFinShadow: '#004c4c', neck: '#20b2aa', headHi: '#e0ffff', headMid: '#afeeee', headShad: '#008080', beak: '#004040', frontFinInner: '#008080', frontFinMid: '#afeeee', frontFinTip: '#004c4c', shellPeak: '#e0ffff', shellMid: '#afeeee', shellBase: '#48d1cc', shellRim: '#008080' }
     };
 
+
+    // Helper to reset turtle positions after resize/orientation
+    function resetTurtlePositions() {
+      const width = canvas.width;
+      const height = canvas.height;
+      turtles.forEach(t => {
+        t.x = Math.random() * width;
+        t.y = Math.random() * height;
+      });
+    }
+
     const turtles = [
       { scaleMult: 1.0, timeOffset: 0, palette: PALETTES.darkTeal },
       { scaleMult: 0.65, timeOffset: 1500, palette: PALETTES.babyBlue },
@@ -240,13 +251,17 @@
       const spd = t.isBaby ? (1.2 + Math.random() * 0.8) * t.scaleMult : (0.4 + Math.random() * 0.5) * t.scaleMult;
       return {
         ...t,
-        x: Math.random() * window.innerWidth,
-        y: Math.random() * window.innerHeight,
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
         angle: Math.random() * Math.PI * 2,
         targetAngle: Math.random() * Math.PI * 2,
         speed: spd,
         baseSpeed: spd
       };
+    });
+
+    window.addEventListener('resize', () => {
+      resetTurtlePositions();
     });
 
     // --- Drawing Helper Functions ---
@@ -607,7 +622,8 @@
 
 
         // Restore original padding so turtles stay visible
-        const padding = Math.min(width * 0.1, height * 0.1, 90 * t.scaleMult);
+        // Allow turtles to wander about 20% farther off screen
+        const padding = Math.min(width * 0.08, height * 0.08, 72 * t.scaleMult) * -1;
         t.x = Math.max(padding, Math.min(width - padding, t.x));
         t.y = Math.max(padding, Math.min(height - padding, t.y));
 
