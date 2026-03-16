@@ -64,12 +64,17 @@
     const canvas = document.getElementById('oceanCanvas');
     const ctx = canvas.getContext('2d');
 
-    // Lock the internal simulation size to initial orientation, so turtles/etc. don't shift
-    // when the device rotates (even though the canvas will still fill the screen).
-    const baseWidth = window.innerWidth;
-    const baseHeight = window.innerHeight;
-    canvas.width = baseWidth;
-    canvas.height = baseHeight;
+
+    // Always match canvas internal resolution to visible size to prevent stretching.
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      canvas.style.width = `${window.innerWidth}px`;
+      canvas.style.height = `${window.innerHeight}px`;
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
 
     let mode = 'water'; // 'water' or 'food'
     const waterBtn = document.getElementById('waterBtn');
@@ -82,12 +87,8 @@
     let gainNode = null;
     let isMuted = true;
 
-    function resizeCanvas() {
-      // Keep internal simulation dimensions fixed (baseWidth/baseHeight), but let the canvas
-      // scale to fill the visible viewport so the UI stays fullscreen.
-      canvas.style.width = `${window.innerWidth}px`;
-      canvas.style.height = `${window.innerHeight}px`;
-    }
+
+    // (Removed duplicate resizeCanvas definition; now handled above)
 
     function createBrownNoiseBuffer(duration = 2) {
       const sampleRate = audioCtx.sampleRate;
@@ -200,8 +201,8 @@
     foodBtn.addEventListener('click', () => { mode = 'food'; updateUI(); });
 
     // --- Setup & Sizing ---
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
+
+    // (Removed duplicate resizeCanvas event listener; now handled above)
 
     // --- Data Definitions ---
     const numParticles = 150;
@@ -427,7 +428,8 @@
       ctx.translate(t.x + hoverX, t.y + hoverY);
       ctx.rotate(t.angle + Math.PI / 2 + swimWobble);
 
-      const scale = Math.min(1, width / 900) * 0.5 * t.scaleMult;
+      // Use the minimum of width and height for scaling to prevent stretching
+      const scale = Math.min(1, Math.min(width, height) / 900) * 0.5 * t.scaleMult;
       ctx.scale(scale, scale);
 
       drawShadow(ctx);
@@ -585,6 +587,8 @@
           t.targetAngle += (Math.random() - 0.5) * Math.PI;
         }
         
+
+        // Restore original margin so turtles stay mostly on screen
         const marginX = Math.min(width * 0.25, 220 * t.scaleMult);
         const marginY = Math.min(height * 0.25, 220 * t.scaleMult);
 
@@ -601,6 +605,8 @@
         t.x += Math.cos(t.angle) * t.speed * dt;
         t.y += Math.sin(t.angle) * t.speed * dt;
 
+
+        // Restore original padding so turtles stay visible
         const padding = Math.min(width * 0.1, height * 0.1, 90 * t.scaleMult);
         t.x = Math.max(padding, Math.min(width - padding, t.x));
         t.y = Math.max(padding, Math.min(height - padding, t.y));
