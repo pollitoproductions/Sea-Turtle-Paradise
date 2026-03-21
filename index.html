@@ -42,17 +42,17 @@
         <ellipse cx="11" cy="15" rx="0.8" ry="0.4" fill="#fff" transform="rotate(270 11 15)"/>
       </svg>
     </button>
-    <!-- ambient button removed; mute now controls ambient music exclusively -->
     <button
-      id="upbeatBtn"
+      id="muteBtn"
       class="w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 bg-slate-900/50 border border-slate-600 text-white hover:bg-slate-800/60 shadow-lg"
-      title="Toggle Upbeat Ambient"
-      aria-label="Toggle Upbeat Ambient"
+      title="Toggle Brown Noise"
+      aria-label="Toggle Brown Noise"
     >
       <svg viewBox="0 0 24 24" fill="none" class="w-6 h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M11 5L6 9H3v6h3l5 4V5z" />
         <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
         <path d="M19.07 5.93a9 9 0 0 1 0 12.73" />
+        <path id="muteSlash" d="M4 4l16 16" />
       </svg>
     </button>
   </div>
@@ -81,164 +81,92 @@
     const foodBtn = document.getElementById('foodBtn');
     const muteBtn = document.getElementById('muteBtn');
 
-    // --- Audio ---
+    // --- Brown noise audio ---
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let brownSource = null;
+    let gainNode = null;
     let isMuted = true;
-    // ambient music flag and nodes
-    let ambientOn = false;
-    let ambientNodes = null;
 
-
-    // (Removed duplicate resizeCanvas definition; now handled above)
-
-    // brown noise removed; ambient music will be used instead
-
-    // --- Ambient music (safe, low-volume) ---
-    function createLightReverb(ctx) {
-      const length = ctx.sampleRate * 2.2;
-      const impulse = ctx.createBuffer(2, length, ctx.sampleRate);
-      for (let c = 0; c < 2; c++) {
-        const channel = impulse.getChannelData(c);
-        for (let i = 0; i < length; i++) channel[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 1.8) * 0.12;
+    function createBrownNoiseBuffer(duration = 2) {
+      const sampleRate = audioCtx.sampleRate;
+      const bufferSize = sampleRate * duration;
+      const buffer = audioCtx.createBuffer(1, bufferSize, sampleRate);
+      const data = buffer.getChannelData(0);
+      let lastOut = 0;
+      for (let i = 0; i < bufferSize; i += 1) {
+        const white = Math.random() * 2 - 1;
+        lastOut = (lastOut + (0.02 * white)) / 1.02;
+        data[i] = lastOut * 3.5;
       }
-      return impulse;
+      return buffer;
     }
 
-    function startAmbientMusic() {
-      if (ambientNodes) return;
-      // Ensure AudioContext is resumed (some browsers start suspended until user gesture)
-      try { audioCtx.resume && audioCtx.resume(); } catch (e) {}
-      const master = audioCtx.createGain();
-      master.gain.value = 0.04; // very gentle by default
-      master.connect(audioCtx.destination);
+    function startBrownNoise() {
+      if (brownSource) return;
+      gainNode = audioCtx.createGain();
+      gainNode.gain.value = 0.12;
+      gainNode.connect(audioCtx.destination);
 
-      const lowpass = audioCtx.createBiquadFilter();
-      lowpass.type = 'lowpass';
-      lowpass.frequency.value = 1400;
-      lowpass.Q.value = 0.7;
-      lowpass.connect(master);
+      // Add a gentle 'smile' EQ (bass + treble boost) for a deeper underwater vibe
+      const lowShelf = audioCtx.createBiquadFilter();
+      lowShelf.type = 'lowshelf';
+      lowShelf.frequency.value = 200;
+      lowShelf.gain.value = 9;
 
-      const convolver = audioCtx.createConvolver();
-      convolver.buffer = createLightReverb(audioCtx);
-      const revGain = audioCtx.createGain();
-      revGain.gain.value = 0.22;
-      convolver.connect(revGain);
-      revGain.connect(lowpass);
+      const highShelf = audioCtx.createBiquadFilter();
+      highShelf.type = 'highshelf';
+      highShelf.frequency.value = 6000;
+      highShelf.gain.value = 7;
 
-      // two gentle pad oscillators detuned slightly
-      const padA = audioCtx.createOscillator(); padA.type = 'sine'; padA.frequency.value = 110;
-      const padB = audioCtx.createOscillator(); padB.type = 'sine'; padB.frequency.value = 88.0;
-      const padAGain = audioCtx.createGain(); padAGain.gain.value = 0.4;
-      const padBGain = audioCtx.createGain(); padBGain.gain.value = 0.45;
-      const padFilter = audioCtx.createBiquadFilter(); padFilter.type = 'lowpass'; padFilter.frequency.value = 800;
+      brownSource = audioCtx.createBufferSource();
+      brownSource.buffer = createBrownNoiseBuffer(2);
+      brownSource.loop = true;
 
-      const padAGainOut = audioCtx.createGain(); padAGainOut.gain.value = 0.5;
-      const padBGainOut = audioCtx.createGain(); padBGainOut.gain.value = 0.5;
-
-      padA.connect(padAGain); padB.connect(padBGain);
-      padAGain.connect(padFilter); padBGain.connect(padFilter);
-      padFilter.connect(padAGainOut); padFilter.connect(padBGainOut);
-      padAGainOut.connect(convolver); padBGainOut.connect(convolver);
-
-      // slow LFO to slightly modulate detune for organic feel
-      const lfo = audioCtx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.02;
-      const lfoGain = audioCtx.createGain(); lfoGain.gain.value = 6;
-      lfo.connect(lfoGain);
-      lfoGain.connect(padA.detune);
-      lfoGain.connect(padB.detune);
-
-      padA.start(); padB.start(); lfo.start();
-
-      ambientNodes = { padA, padB, padAGain, padBGain, padFilter, padAGainOut, padBGainOut, lfo, lfoGain, convolver, revGain, lowpass, master };
-      ambientOn = true;
-      updateUpbeatUI();
+      brownSource.connect(lowShelf);
+      lowShelf.connect(highShelf);
+      highShelf.connect(gainNode);
+      brownSource.start();
     }
 
-    function stopAmbientMusic() {
-      if (!ambientNodes) return;
-      const n = ambientNodes;
-      try {
-        n.padA.stop(); n.padB.stop(); n.lfo.stop();
-        if (n.rhythmOsc) n.rhythmOsc.stop();
-        if (n.rhythmLFO) n.rhythmLFO.stop();
-      } catch (e) {}
-      try { n.padA.disconnect(); n.padB.disconnect(); n.lfo.disconnect(); } catch (e) {}
-      try { n.padAGain.disconnect(); n.padBGain.disconnect(); } catch (e) {}
-      try { n.padFilter.disconnect(); n.convolver.disconnect(); n.revGain.disconnect(); n.lowpass.disconnect(); n.master.disconnect(); } catch (e) {}
-      try { if (n.rhythmGain) n.rhythmGain.disconnect(); if (n.rhythmLFOGain) n.rhythmLFOGain.disconnect(); } catch (e) {}
-      ambientNodes = null;
-      ambientOn = false;
-      updateUpbeatUI();
+    function stopBrownNoise() {
+      if (!brownSource) return;
+      brownSource.stop();
+      brownSource.disconnect();
+      gainNode.disconnect();
+      brownSource = null;
+      gainNode = null;
     }
 
-    // Start a slightly more upbeat ambient (pads + subtle rhythmic pulse)
-    function startUpbeatMusic() {
-      if (ambientNodes) return;
-      // start base ambient first
-      startAmbientMusic();
-      if (!ambientNodes) return;
-      // ensure AudioContext resumed
-      try { audioCtx.resume && audioCtx.resume(); } catch (e) {}
-
-      // small rhythmic element: a tonal pulse modulated at ~2Hz
-      const rhythmOsc = audioCtx.createOscillator(); rhythmOsc.type = 'sine'; rhythmOsc.frequency.value = 220;
-      const rhythmGain = audioCtx.createGain(); rhythmGain.gain.value = 0.0;
-      const rhythmLFO = audioCtx.createOscillator(); rhythmLFO.type = 'sine'; rhythmLFO.frequency.value = 2.0;
-      const rhythmLFOGain = audioCtx.createGain(); rhythmLFOGain.gain.value = 0.025;
-      rhythmLFO.connect(rhythmLFOGain);
-      rhythmLFOGain.connect(rhythmGain.gain);
-      rhythmOsc.connect(rhythmGain);
-      // route through master output if present
-      if (ambientNodes && ambientNodes.master) rhythmGain.connect(ambientNodes.master);
-      rhythmOsc.start(); rhythmLFO.start();
-
-      // attach rhythm nodes so stopAmbientMusic will clean them up
-      ambientNodes.rhythmOsc = rhythmOsc;
-      ambientNodes.rhythmGain = rhythmGain;
-      ambientNodes.rhythmLFO = rhythmLFO;
-      ambientNodes.rhythmLFOGain = rhythmLFOGain;
-      ambientOn = true;
-      updateUpbeatUI();
-    }
-
-    function updateUpbeatUI() {
-      const btn = document.getElementById('upbeatBtn');
-      if (!btn) return;
-      if (!ambientOn) {
-        btn.classList.remove('text-green-300');
-        btn.classList.add('text-white');
+    function updateMuteUI() {
+      if (isMuted) {
+        muteBtn.classList.remove('text-green-300');
+        muteBtn.classList.add('text-white');
+        muteBtn.querySelector('#muteSlash').style.display = 'block';
       } else {
-        btn.classList.remove('text-white');
-        btn.classList.add('text-green-300');
+        muteBtn.classList.remove('text-white');
+        muteBtn.classList.add('text-green-300');
+        muteBtn.querySelector('#muteSlash').style.display = 'none';
       }
     }
 
-    function updateAmbientUI() {
-      // kept for backward-compatibility: forward to upbeat UI
-      updateUpbeatUI();
-    }
-
-    const upbeatBtn = document.getElementById('upbeatBtn');
-    upbeatBtn && upbeatBtn.addEventListener('click', () => {
-      if (!ambientOn) {
-        // start upbeat variant
-        startUpbeatMusic();
+    muteBtn.addEventListener('click', () => {
+      if (isMuted) {
+        startBrownNoise();
       } else {
-        // stop everything
-        stopAmbientMusic();
+        stopBrownNoise();
       }
-      ambientOn = !ambientOn;
-      updateUpbeatUI();
+      isMuted = !isMuted;
+      updateMuteUI();
     });
 
-    updateUpbeatUI();
+    updateMuteUI();
 
     function handleVisibilityChange() {
       if (document.hidden) {
-        if (ambientOn) {
-          stopAmbientMusic();
-          ambientOn = false;
-          updateUpbeatUI();
+        if (!isMuted) {
+          stopBrownNoise();
+          isMuted = true;
+          updateMuteUI();
         }
       }
     }
