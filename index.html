@@ -655,12 +655,19 @@
           t.offscreenTime = 0;
         }
 
-        // If a turtle has been offscreen for too long, force it to head back to center
-        if (t.offscreenTime > 120) { // ~2 seconds (120 frames at 60fps dt~1)
-          isAvoidingEdge = true;
+        // If a turtle has been offscreen for too long, more forcefully return it to visible area
+        if (t.offscreenTime > 60) { // ~1 second
+          // Clamp turtle to a safe visible area (5% inset) so it won't disappear
+          const insetX = Math.max(20, width * 0.05);
+          const insetY = Math.max(20, height * 0.05);
+          t.x = Math.max(insetX, Math.min(width - insetX, t.x));
+          t.y = Math.max(insetY, Math.min(height - insetY, t.y));
+
+          // Snap its angle toward center and boost speed so it visibly returns
           t.targetAngle = Math.atan2((height / 2) - t.y, (width / 2) - t.x);
-          t.speed = Math.max(t.baseSpeed, t.baseSpeed * 1.2);
-          t.offscreenTime = 0; // reset after nudging
+          t.angle = t.targetAngle;
+          t.speed = t.baseSpeed * 2.0;
+          t.offscreenTime = 0; // reset after repositioning
         }
 
         drawRealisticTurtle(ctx, time, width, height, t);
