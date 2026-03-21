@@ -44,16 +44,15 @@
     </button>
     <!-- ambient button removed; mute now controls ambient music exclusively -->
     <button
-      id="muteBtn"
-        class="w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 bg-slate-900/50 border border-slate-600 text-white hover:bg-slate-800/60 shadow-lg"
-        title="Toggle Ambient Sound"
-        aria-label="Toggle Ambient Sound"
+      id="upbeatBtn"
+      class="w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 bg-slate-900/50 border border-slate-600 text-white hover:bg-slate-800/60 shadow-lg"
+      title="Toggle Upbeat Ambient"
+      aria-label="Toggle Upbeat Ambient"
     >
       <svg viewBox="0 0 24 24" fill="none" class="w-6 h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M11 5L6 9H3v6h3l5 4V5z" />
         <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
         <path d="M19.07 5.93a9 9 0 0 1 0 12.73" />
-        <path id="muteSlash" d="M4 4l16 16" />
       </svg>
     </button>
   </div>
@@ -152,7 +151,7 @@
 
       ambientNodes = { padA, padB, padAGain, padBGain, padFilter, padAGainOut, padBGainOut, lfo, lfoGain, convolver, revGain, lowpass, master };
       ambientOn = true;
-      updateAmbientUI();
+      updateUpbeatUI();
     }
 
     function stopAmbientMusic() {
@@ -160,50 +159,86 @@
       const n = ambientNodes;
       try {
         n.padA.stop(); n.padB.stop(); n.lfo.stop();
+        if (n.rhythmOsc) n.rhythmOsc.stop();
+        if (n.rhythmLFO) n.rhythmLFO.stop();
       } catch (e) {}
       try { n.padA.disconnect(); n.padB.disconnect(); n.lfo.disconnect(); } catch (e) {}
       try { n.padAGain.disconnect(); n.padBGain.disconnect(); } catch (e) {}
       try { n.padFilter.disconnect(); n.convolver.disconnect(); n.revGain.disconnect(); n.lowpass.disconnect(); n.master.disconnect(); } catch (e) {}
+      try { if (n.rhythmGain) n.rhythmGain.disconnect(); if (n.rhythmLFOGain) n.rhythmLFOGain.disconnect(); } catch (e) {}
       ambientNodes = null;
       ambientOn = false;
-      updateAmbientUI();
+      updateUpbeatUI();
     }
 
-    function updateMuteUI() {
-      if (isMuted) {
-        muteBtn.classList.remove('text-green-300');
-        muteBtn.classList.add('text-white');
-        muteBtn.querySelector('#muteSlash').style.display = 'block';
+    // Start a slightly more upbeat ambient (pads + subtle rhythmic pulse)
+    function startUpbeatMusic() {
+      if (ambientNodes) return;
+      // start base ambient first
+      startAmbientMusic();
+      if (!ambientNodes) return;
+      // ensure AudioContext resumed
+      try { audioCtx.resume && audioCtx.resume(); } catch (e) {}
+
+      // small rhythmic element: a tonal pulse modulated at ~2Hz
+      const rhythmOsc = audioCtx.createOscillator(); rhythmOsc.type = 'sine'; rhythmOsc.frequency.value = 220;
+      const rhythmGain = audioCtx.createGain(); rhythmGain.gain.value = 0.0;
+      const rhythmLFO = audioCtx.createOscillator(); rhythmLFO.type = 'sine'; rhythmLFO.frequency.value = 2.0;
+      const rhythmLFOGain = audioCtx.createGain(); rhythmLFOGain.gain.value = 0.025;
+      rhythmLFO.connect(rhythmLFOGain);
+      rhythmLFOGain.connect(rhythmGain.gain);
+      rhythmOsc.connect(rhythmGain);
+      // route through master output if present
+      if (ambientNodes && ambientNodes.master) rhythmGain.connect(ambientNodes.master);
+      rhythmOsc.start(); rhythmLFO.start();
+
+      // attach rhythm nodes so stopAmbientMusic will clean them up
+      ambientNodes.rhythmOsc = rhythmOsc;
+      ambientNodes.rhythmGain = rhythmGain;
+      ambientNodes.rhythmLFO = rhythmLFO;
+      ambientNodes.rhythmLFOGain = rhythmLFOGain;
+      ambientOn = true;
+      updateUpbeatUI();
+    }
+
+    function updateUpbeatUI() {
+      const btn = document.getElementById('upbeatBtn');
+      if (!btn) return;
+      if (!ambientOn) {
+        btn.classList.remove('text-green-300');
+        btn.classList.add('text-white');
       } else {
-        muteBtn.classList.remove('text-white');
-        muteBtn.classList.add('text-green-300');
-        muteBtn.querySelector('#muteSlash').style.display = 'none';
+        btn.classList.remove('text-white');
+        btn.classList.add('text-green-300');
       }
     }
 
     function updateAmbientUI() {
-      // UI for ambient is tied to the mute button now; handled in updateMuteUI
-      return;
+      // kept for backward-compatibility: forward to upbeat UI
+      updateUpbeatUI();
     }
 
-    muteBtn.addEventListener('click', () => {
-      if (isMuted) {
-        startAmbientMusic();
+    const upbeatBtn = document.getElementById('upbeatBtn');
+    upbeatBtn && upbeatBtn.addEventListener('click', () => {
+      if (!ambientOn) {
+        // start upbeat variant
+        startUpbeatMusic();
       } else {
+        // stop everything
         stopAmbientMusic();
       }
-      isMuted = !isMuted;
-      updateMuteUI();
+      ambientOn = !ambientOn;
+      updateUpbeatUI();
     });
 
-    updateMuteUI();
+    updateUpbeatUI();
 
     function handleVisibilityChange() {
       if (document.hidden) {
-        if (!isMuted) {
+        if (ambientOn) {
           stopAmbientMusic();
-          isMuted = true;
-          updateMuteUI();
+          ambientOn = false;
+          updateUpbeatUI();
         }
       }
     }
