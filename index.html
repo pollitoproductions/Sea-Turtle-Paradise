@@ -576,10 +576,11 @@
         let scaredByWave = false;
 
 
-        // Check for nearby waves and scare turtles away
+        // Check for nearby waves and scare turtles away (ignore waves created by food drops)
         let nearestWaveDist = Infinity;
         let nearestWave = null;
         gameState.waves.forEach(w => {
+          if (w.source === 'food') return; // don't let food-drop waves scare turtles
           const dist = Math.hypot(w.x - t.x, w.y - t.y);
           if (dist < nearestWaveDist) {
             nearestWaveDist = dist;
@@ -623,7 +624,8 @@
         const marginX = Math.min(width * 0.05, 44 * t.scaleMult);
         const marginY = Math.min(height * 0.05, 44 * t.scaleMult);
 
-        if (t.x < marginX || t.x > width - marginX || t.y < marginY || t.y > height - marginY) {
+        // Only avoid edges when not actively pursuing food; allow small off-screen roaming while chasing
+        if (!foundFood && (t.x < marginX || t.x > width - marginX || t.y < marginY || t.y > height - marginY)) {
           isAvoidingEdge = true;
           t.targetAngle = Math.atan2((height / 2) - t.y, (width / 2) - t.x);
         }
@@ -638,7 +640,8 @@
 
 
         // Increase negative padding so turtles can go off screen by about 20%
-        const padding = Math.max(width, height) * 0.2 * -1;
+        // Allow turtles to wander slightly further off-screen to reach near-edge food
+        const padding = Math.max(width, height) * 0.25 * -1;
         t.x = Math.max(padding, Math.min(width - padding, t.x));
         t.y = Math.max(padding, Math.min(height - padding, t.y));
 
@@ -677,9 +680,10 @@
       const clampedY = Math.max(foodPadding * -1, Math.min(canvas.height + foodPadding, y));
       if (mode === 'food') {
         gameState.food.push({ x: clampedX, y: clampedY, size: 0, targetSize: 15, rot: Math.random() * Math.PI * 2 });
-        gameState.waves.push({ x: clampedX, y: clampedY, age: 0, life: 60, speed: 1.5 });
+        // mark waves created by food drops so turtles won't be scared by them
+        gameState.waves.push({ x: clampedX, y: clampedY, age: 0, life: 60, speed: 1.5, source: 'food' });
       } else {
-        gameState.waves.push({ x, y, age: 0, life: 100, speed: 2.5 });
+        gameState.waves.push({ x, y, age: 0, life: 100, speed: 2.5, source: 'water' });
       }
     };
 
