@@ -81,136 +81,63 @@
     const foodBtn = document.getElementById('foodBtn');
     const muteBtn = document.getElementById('muteBtn');
 
-    // --- Ambient lo-fi music (WebAudio synth) ---
+    // --- Brown noise audio ---
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    let ambientNodes = null; // container for nodes so we can stop/cleanup
+    let brownSource = null;
+    let gainNode = null;
+    let isMuted = true;
 
-    // Create a short impulse response for light reverb
-    function createReverbBuffer(ctx, duration = 2, decay = 2) {
-      const rate = ctx.sampleRate;
-      const length = rate * duration;
-      const impulse = ctx.createBuffer(2, length, rate);
-      for (let ch = 0; ch < 2; ch++) {
-        const channelData = impulse.getChannelData(ch);
-        for (let i = 0; i < length; i++) {
-          channelData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay) * 0.2;
-        }
+
+    // (Removed duplicate resizeCanvas definition; now handled above)
+
+    function createBrownNoiseBuffer(duration = 2) {
+      const sampleRate = audioCtx.sampleRate;
+      const bufferSize = sampleRate * duration;
+      const buffer = audioCtx.createBuffer(1, bufferSize, sampleRate);
+      const data = buffer.getChannelData(0);
+      let lastOut = 0;
+      for (let i = 0; i < bufferSize; i += 1) {
+        const white = Math.random() * 2 - 1;
+        lastOut = (lastOut + (0.02 * white)) / 1.02;
+        data[i] = lastOut * 3.5;
       }
-      return impulse;
+      return buffer;
     }
 
-    function startAmbientMusic() {
-      if (ambientNodes) return;
-      const gain = audioCtx.createGain();
-      gain.gain.value = 0.08; // gentle level
-      gain.connect(audioCtx.destination);
+    function startBrownNoise() {
+      if (brownSource) return;
+      gainNode = audioCtx.createGain();
+      gainNode.gain.value = 0.12;
+      gainNode.connect(audioCtx.destination);
 
-      // Master lowpass to keep things mellow
-      const masterLP = audioCtx.createBiquadFilter();
-      masterLP.type = 'lowpass';
-      masterLP.frequency.value = 1200;
-      masterLP.Q.value = 0.6;
-      masterLP.connect(gain);
+      // Add a gentle 'smile' EQ (bass + treble boost) for a deeper underwater vibe
+      const lowShelf = audioCtx.createBiquadFilter();
+      lowShelf.type = 'lowshelf';
+      lowShelf.frequency.value = 200;
+      lowShelf.gain.value = 9;
 
-      // Reverb
-      const convolver = audioCtx.createConvolver();
-      convolver.buffer = createReverbBuffer(audioCtx, 3.5, 2.2);
-      convolver.normalize = true;
+      const highShelf = audioCtx.createBiquadFilter();
+      highShelf.type = 'highshelf';
+      highShelf.frequency.value = 6000;
+      highShelf.gain.value = 7;
 
-      const reverbGain = audioCtx.createGain();
-      reverbGain.gain.value = 0.28;
-      convolver.connect(reverbGain);
-      reverbGain.connect(masterLP);
+      brownSource = audioCtx.createBufferSource();
+      brownSource.buffer = createBrownNoiseBuffer(2);
+      brownSource.loop = true;
 
-      // Gentle pad voices
-      const padVoices = [];
-      const baseFreqs = [110, 146.83, 82.41]; // A2, D3, E2-ish chord tones
-      baseFreqs.forEach((freq, i) => {
-        const osc = audioCtx.createOscillator();
-        osc.type = 'sawtooth';
-        osc.frequency.value = freq * (1 + (Math.random() - 0.5) * 0.01);
-
-        const detuneOsc = audioCtx.createOscillator();
-        detuneOsc.type = 'sine';
-        detuneOsc.frequency.value = 0.07 + Math.random() * 0.03; // slow LFO for detune
-
-        const detuneGain = audioCtx.createGain();
-        detuneGain.gain.value = 6 + Math.random() * 4; // cents
-
-        detuneOsc.connect(detuneGain);
-        detuneGain.connect(osc.detune);
-
-        const filt = audioCtx.createBiquadFilter();
-        filt.type = 'lowpass';
-        filt.frequency.value = 800 + Math.random() * 300;
-        filt.Q.value = 0.7;
-
-        // Slow LFO to modulate filter cutoff
-        const lfo = audioCtx.createOscillator();
-        lfo.type = 'sine';
-        lfo.frequency.value = 0.03 + Math.random() * 0.02;
-        const lfoGain = audioCtx.createGain();
-        lfoGain.gain.value = 200 + Math.random() * 150;
-        lfo.connect(lfoGain);
-        lfoGain.connect(filt.frequency);
-
-        const voiceGain = audioCtx.createGain();
-        voiceGain.gain.value = 0.25 / baseFreqs.length;
-
-        osc.connect(filt);
-        filt.connect(voiceGain);
-        voiceGain.connect(convolver);
-
-        osc.start();
-        detuneOsc.start();
-        lfo.start();
-
-        padVoices.push({ osc, detuneOsc, lfo, voiceGain, filt });
-      });
-
-      // light tape hiss via filtered noise
-      const bufferSize = 2 * audioCtx.sampleRate;
-      const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-      const output = noiseBuffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) output[i] = (Math.random() * 2 - 1) * 0.002;
-      const noiseSrc = audioCtx.createBufferSource();
-      noiseSrc.loop = true;
-      noiseSrc.buffer = noiseBuffer;
-      const noiseFilt = audioCtx.createBiquadFilter();
-      noiseFilt.type = 'lowpass';
-      noiseFilt.frequency.value = 2000;
-      const noiseGain = audioCtx.createGain();
-      noiseGain.gain.value = 0.02;
-      noiseSrc.connect(noiseFilt);
-      noiseFilt.connect(noiseGain);
-      noiseGain.connect(masterLP);
-      noiseSrc.start();
-
-      ambientNodes = { padVoices, convolver, reverbGain, masterLP, gain, noiseSrc, noiseGain };
+      brownSource.connect(lowShelf);
+      lowShelf.connect(highShelf);
+      highShelf.connect(gainNode);
+      brownSource.start();
     }
 
-    function stopAmbientMusic() {
-      if (!ambientNodes) return;
-      const { padVoices, convolver, masterLP, gain, noiseSrc } = ambientNodes;
-      try {
-        padVoices.forEach(v => {
-          v.osc.stop();
-          v.detuneOsc.stop();
-          v.lfo.stop();
-          v.osc.disconnect();
-          v.detuneOsc.disconnect();
-          v.lfo.disconnect();
-        });
-        noiseSrc.stop();
-        noiseSrc.disconnect();
-        convolver.disconnect();
-        masterLP.disconnect();
-        gain.disconnect();
-      } catch (e) {
-        // ignore stop timing errors
-      }
-      ambientNodes = null;
-    }
+    function stopBrownNoise() {
+      if (!brownSource) return;
+      brownSource.stop();
+      brownSource.disconnect();
+      gainNode.disconnect();
+      brownSource = null;
+      gainNode = null;
     }
 
     function updateMuteUI() {
@@ -227,9 +154,9 @@
 
     muteBtn.addEventListener('click', () => {
       if (isMuted) {
-        startAmbientMusic();
+        startBrownNoise();
       } else {
-        stopAmbientMusic();
+        stopBrownNoise();
       }
       isMuted = !isMuted;
       updateMuteUI();
@@ -240,7 +167,7 @@
     function handleVisibilityChange() {
       if (document.hidden) {
         if (!isMuted) {
-          stopAmbientMusic();
+          stopBrownNoise();
           isMuted = true;
           updateMuteUI();
         }
