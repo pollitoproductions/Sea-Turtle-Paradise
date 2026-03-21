@@ -107,6 +107,8 @@
 
     function startAmbientMusic() {
       if (ambientNodes) return;
+      // Ensure AudioContext is resumed (some browsers start suspended until user gesture)
+      try { audioCtx.resume && audioCtx.resume(); } catch (e) {}
       const master = audioCtx.createGain();
       master.gain.value = 0.04; // very gentle by default
       master.connect(audioCtx.destination);
