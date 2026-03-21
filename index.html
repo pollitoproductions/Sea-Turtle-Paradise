@@ -44,15 +44,25 @@
     </button>
     <button
       id="muteBtn"
-      class="w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 bg-slate-900/50 border border-slate-600 text-white hover:bg-slate-800/60 shadow-lg"
-      title="Toggle Brown Noise"
-      aria-label="Toggle Brown Noise"
+        class="w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 bg-slate-900/50 border border-slate-600 text-white hover:bg-slate-800/60 shadow-lg"
+        title="Toggle Water Sound"
+        aria-label="Toggle Water Sound"
     >
       <svg viewBox="0 0 24 24" fill="none" class="w-6 h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M11 5L6 9H3v6h3l5 4V5z" />
         <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
         <path d="M19.07 5.93a9 9 0 0 1 0 12.73" />
         <path id="muteSlash" d="M4 4l16 16" />
+      </svg>
+    </button>
+    <button
+      id="dayNightBtn"
+      class="w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 bg-slate-900/50 border border-slate-600 text-white hover:bg-slate-800/60 shadow-lg"
+      title="Toggle Day/Night"
+      aria-label="Toggle Day/Night"
+    >
+      <svg viewBox="0 0 24 24" fill="none" class="w-6 h-6" stroke="currentColor" stroke-width="1.5">
+        <circle cx="12" cy="12" r="4" fill="currentColor" />
       </svg>
     </button>
   </div>
@@ -80,23 +90,56 @@
     const waterBtn = document.getElementById('waterBtn');
     const foodBtn = document.getElementById('foodBtn');
     const muteBtn = document.getElementById('muteBtn');
+    const dayNightBtn = document.getElementById('dayNightBtn');
 
-    // --- Brown noise audio ---
+    // Theme: 'night' uses existing background, 'day' uses light teal
+    let theme = 'night';
+
+    function updateThemeUI() {
+      if (theme === 'night') {
+        document.body.style.backgroundColor = '#000714';
+        canvas.style.backgroundColor = 'transparent';
+        dayNightBtn.className = "w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 bg-slate-900/50 border border-slate-600 text-white hover:bg-slate-800/60 shadow-lg";
+      } else {
+        document.body.style.backgroundColor = '#bfeeea'; // light teal day
+        canvas.style.backgroundColor = 'transparent';
+        dayNightBtn.className = "w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 bg-teal-200 border border-teal-300 text-white shadow-[0_0_10px_rgba(56,189,248,0.25)] scale-110";
+      }
+    }
+
+    dayNightBtn.addEventListener('click', () => {
+      theme = theme === 'night' ? 'day' : 'night';
+      updateThemeUI();
+    });
+
+    // --- Water sound (soft river) audio ---
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     let brownSource = null;
     let gainNode = null;
     let isMuted = true;
 
-    function createBrownNoiseBuffer(duration = 2) {
+    // Create a looping buffer that blends smooth, filtered noise to resemble a soft river
+    function createBrownNoiseBuffer(duration = 4) {
       const sampleRate = audioCtx.sampleRate;
       const bufferSize = sampleRate * duration;
-      const buffer = audioCtx.createBuffer(1, bufferSize, sampleRate);
-      const data = buffer.getChannelData(0);
-      let lastOut = 0;
-      for (let i = 0; i < bufferSize; i += 1) {
-        const white = Math.random() * 2 - 1;
-        lastOut = (lastOut + (0.02 * white)) / 1.02;
-        data[i] = lastOut * 3.5;
+      const buffer = audioCtx.createBuffer(2, bufferSize, sampleRate);
+
+      // Two channels with less smoothing and more high-frequency content
+      for (let ch = 0; ch < 2; ch++) {
+        const data = buffer.getChannelData(ch);
+        let last = 0;
+        // reduce smoothing to allow more high-frequency energy (shower-like)
+        const smooth = 0.008 + Math.random() * 0.006 + (ch * 0.001);
+        const phaseOffset = Math.random() * Math.PI * 2;
+        for (let i = 0; i < bufferSize; i++) {
+          const white = Math.random() * 2 - 1;
+          last = last + smooth * (white - last);
+          // faster, slightly stronger modulation to emulate steady spray
+          const t = i / sampleRate;
+          const mod = 0.95 + 0.06 * Math.sin(2 * Math.PI * 0.6 * t + phaseOffset) + 0.03 * Math.sin(2 * Math.PI * 2.2 * t);
+          // add a bit more HF sparkle to simulate water hitting surfaces
+          data[i] = last * 0.6 * mod + (Math.random() * 2 - 1) * 0.018;
+        }
       }
       return buffer;
     }
@@ -104,33 +147,68 @@
     function startBrownNoise() {
       if (brownSource) return;
       gainNode = audioCtx.createGain();
-      gainNode.gain.value = 0.12;
+      // slightly louder than the soft river, tuned for sink/shower clarity
+      gainNode.gain.value = 0.08;
       gainNode.connect(audioCtx.destination);
 
-      // Add a gentle 'smile' EQ (bass + treble boost) for a deeper underwater vibe
-      const lowShelf = audioCtx.createBiquadFilter();
-      lowShelf.type = 'lowshelf';
-      lowShelf.frequency.value = 200;
-      lowShelf.gain.value = 9;
+      // gentle highpass to remove mud, then a mild band character for surface sparkle
+      const highpass = audioCtx.createBiquadFilter();
+      highpass.type = 'highpass';
+      highpass.frequency.value = 300; // cut low rumble for a clearer shower tone
+      highpass.Q.value = 0.8;
 
+      const band = audioCtx.createBiquadFilter();
+      band.type = 'bandpass';
+      band.frequency.value = 2500; // emphasize brighter surface spray
+      band.Q.value = 1.2;
+
+      // gentle lowpass to control extreme HF but keep shower shimmer
+      const lowpass = audioCtx.createBiquadFilter();
+      lowpass.type = 'lowpass';
+      lowpass.frequency.value = 6000;
+      lowpass.Q.value = 0.7;
+
+      // add a subtle high-shelf boost for metallic/shower sparkle
       const highShelf = audioCtx.createBiquadFilter();
       highShelf.type = 'highshelf';
-      highShelf.frequency.value = 6000;
-      highShelf.gain.value = 7;
+      highShelf.frequency.value = 7000;
+      highShelf.gain.value = 6;
 
       brownSource = audioCtx.createBufferSource();
-      brownSource.buffer = createBrownNoiseBuffer(2);
+      brownSource.buffer = createBrownNoiseBuffer(4);
       brownSource.loop = true;
 
-      brownSource.connect(lowShelf);
-      lowShelf.connect(highShelf);
+      // slight stereo spread: create splitter + merger and offset channels with tiny delay
+      const splitter = audioCtx.createChannelSplitter(2);
+      const merger = audioCtx.createChannelMerger(2);
+
+      brownSource.connect(splitter);
+
+
+      const delayL = audioCtx.createDelay();
+      const delayR = audioCtx.createDelay();
+      delayL.delayTime.value = 0.0;
+      delayR.delayTime.value = 0.005; // small offset for tighter stereo spray
+
+      splitter.connect(delayL, 0);
+      splitter.connect(delayR, 1);
+
+      delayL.connect(band);
+      delayR.connect(band);
+
+      band.connect(lowpass);
+      lowpass.connect(highpass);
+      highpass.connect(highShelf);
       highShelf.connect(gainNode);
+
       brownSource.start();
     }
 
     function stopBrownNoise() {
       if (!brownSource) return;
-      brownSource.stop();
+      try {
+        brownSource.stop();
+      } catch (e) {}
       brownSource.disconnect();
       gainNode.disconnect();
       brownSource = null;
