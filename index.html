@@ -257,6 +257,7 @@
         targetAngle: Math.random() * Math.PI * 2,
         speed: spd,
         baseSpeed: spd
+        ,offscreenTime: 0
       };
     });
 
@@ -640,10 +641,27 @@
 
 
         // Increase negative padding so turtles can go off screen by about 20%
-        // Allow turtles to wander slightly further off-screen to reach near-edge food
-        const padding = Math.max(width, height) * 0.25 * -1;
+        // Allow turtles to wander slightly off-screen to reach near-edge food, but not disappear.
+        // Track offscreen time and nudge turtles back if they're gone too long.
+        const padding = Math.max(width, height) * 0.12 * -1;
         t.x = Math.max(padding, Math.min(width - padding, t.x));
         t.y = Math.max(padding, Math.min(height - padding, t.y));
+
+        // Offscreen timeout logic: if turtle is outside visible bounds, increment timer
+        const isVisible = t.x >= 0 && t.x <= width && t.y >= 0 && t.y <= height;
+        if (!isVisible) {
+          t.offscreenTime = (t.offscreenTime || 0) + dt;
+        } else {
+          t.offscreenTime = 0;
+        }
+
+        // If a turtle has been offscreen for too long, force it to head back to center
+        if (t.offscreenTime > 120) { // ~2 seconds (120 frames at 60fps dt~1)
+          isAvoidingEdge = true;
+          t.targetAngle = Math.atan2((height / 2) - t.y, (width / 2) - t.x);
+          t.speed = Math.max(t.baseSpeed, t.baseSpeed * 1.2);
+          t.offscreenTime = 0; // reset after nudging
+        }
 
         drawRealisticTurtle(ctx, time, width, height, t);
       });
