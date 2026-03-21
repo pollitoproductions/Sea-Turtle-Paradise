@@ -42,17 +42,7 @@
         <ellipse cx="11" cy="15" rx="0.8" ry="0.4" fill="#fff" transform="rotate(270 11 15)"/>
       </svg>
     </button>
-    <button
-      id="ambientBtn"
-      class="w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 bg-slate-900/50 border border-slate-600 text-white hover:bg-slate-800/60 shadow-lg"
-      title="Toggle Ambient Music"
-      aria-label="Toggle Ambient Music"
-    >
-      <svg viewBox="0 0 24 24" fill="none" class="w-6 h-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M9 17a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
-        <path d="M9 14V3l10 4v7" />
-      </svg>
-    </button>
+    <!-- ambient button removed; mute now controls ambient music exclusively -->
     <button
       id="muteBtn"
       class="w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 bg-slate-900/50 border border-slate-600 text-white hover:bg-slate-800/60 shadow-lg"
@@ -92,10 +82,8 @@
     const foodBtn = document.getElementById('foodBtn');
     const muteBtn = document.getElementById('muteBtn');
 
-    // --- Brown noise audio ---
+    // --- Audio ---
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    let brownSource = null;
-    let gainNode = null;
     let isMuted = true;
     // ambient music flag and nodes
     let ambientOn = false;
@@ -104,55 +92,7 @@
 
     // (Removed duplicate resizeCanvas definition; now handled above)
 
-    function createBrownNoiseBuffer(duration = 2) {
-      const sampleRate = audioCtx.sampleRate;
-      const bufferSize = sampleRate * duration;
-      const buffer = audioCtx.createBuffer(1, bufferSize, sampleRate);
-      const data = buffer.getChannelData(0);
-      let lastOut = 0;
-      for (let i = 0; i < bufferSize; i += 1) {
-        const white = Math.random() * 2 - 1;
-        lastOut = (lastOut + (0.02 * white)) / 1.02;
-        data[i] = lastOut * 3.5;
-      }
-      return buffer;
-    }
-
-    function startBrownNoise() {
-      if (brownSource) return;
-      gainNode = audioCtx.createGain();
-      gainNode.gain.value = 0.12;
-      gainNode.connect(audioCtx.destination);
-
-      // Add a gentle 'smile' EQ (bass + treble boost) for a deeper underwater vibe
-      const lowShelf = audioCtx.createBiquadFilter();
-      lowShelf.type = 'lowshelf';
-      lowShelf.frequency.value = 200;
-      lowShelf.gain.value = 9;
-
-      const highShelf = audioCtx.createBiquadFilter();
-      highShelf.type = 'highshelf';
-      highShelf.frequency.value = 6000;
-      highShelf.gain.value = 7;
-
-      brownSource = audioCtx.createBufferSource();
-      brownSource.buffer = createBrownNoiseBuffer(2);
-      brownSource.loop = true;
-
-      brownSource.connect(lowShelf);
-      lowShelf.connect(highShelf);
-      highShelf.connect(gainNode);
-      brownSource.start();
-    }
-
-    function stopBrownNoise() {
-      if (!brownSource) return;
-      brownSource.stop();
-      brownSource.disconnect();
-      gainNode.disconnect();
-      brownSource = null;
-      gainNode = null;
-    }
+    // brown noise removed; ambient music will be used instead
 
     // --- Ambient music (safe, low-volume) ---
     function createLightReverb(ctx) {
@@ -239,27 +179,16 @@
       }
     }
 
-    const ambientBtn = document.getElementById('ambientBtn');
     function updateAmbientUI() {
-      if (!ambientBtn) return;
-      if (ambientOn) {
-        ambientBtn.classList.remove('text-white');
-        ambientBtn.classList.add('text-green-300');
-      } else {
-        ambientBtn.classList.remove('text-green-300');
-        ambientBtn.classList.add('text-white');
-      }
+      // UI for ambient is tied to the mute button now; handled in updateMuteUI
+      return;
     }
-
-    ambientBtn && ambientBtn.addEventListener('click', () => {
-      if (!ambientOn) startAmbientMusic(); else stopAmbientMusic();
-    });
 
     muteBtn.addEventListener('click', () => {
       if (isMuted) {
-        startBrownNoise();
+        startAmbientMusic();
       } else {
-        stopBrownNoise();
+        stopAmbientMusic();
       }
       isMuted = !isMuted;
       updateMuteUI();
@@ -270,14 +199,9 @@
     function handleVisibilityChange() {
       if (document.hidden) {
         if (!isMuted) {
-          stopBrownNoise();
+          stopAmbientMusic();
           isMuted = true;
           updateMuteUI();
-        }
-        if (ambientOn) {
-          stopAmbientMusic();
-          ambientOn = false;
-          updateAmbientUI();
         }
       }
     }
