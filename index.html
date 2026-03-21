@@ -43,6 +43,17 @@
       </svg>
     </button>
     <button
+      id="ambientBtn"
+      class="w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 bg-slate-900/50 border border-slate-600 text-white hover:bg-slate-800/60 shadow-lg"
+      title="Toggle Ambient Music"
+      aria-label="Toggle Ambient Music"
+    >
+      <svg viewBox="0 0 24 24" fill="none" class="w-6 h-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 17a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
+        <path d="M9 14V3l10 4v7" />
+      </svg>
+    </button>
+    <button
       id="muteBtn"
       class="w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 bg-slate-900/50 border border-slate-600 text-white hover:bg-slate-800/60 shadow-lg"
       title="Toggle Brown Noise"
@@ -86,6 +97,9 @@
     let brownSource = null;
     let gainNode = null;
     let isMuted = true;
+    // ambient music flag and nodes
+    let ambientOn = false;
+    let ambientNodes = null;
 
 
     // (Removed duplicate resizeCanvas definition; now handled above)
@@ -140,6 +154,79 @@
       gainNode = null;
     }
 
+    // --- Ambient music (safe, low-volume) ---
+    function createLightReverb(ctx) {
+      const length = ctx.sampleRate * 2.2;
+      const impulse = ctx.createBuffer(2, length, ctx.sampleRate);
+      for (let c = 0; c < 2; c++) {
+        const channel = impulse.getChannelData(c);
+        for (let i = 0; i < length; i++) channel[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 1.8) * 0.12;
+      }
+      return impulse;
+    }
+
+    function startAmbientMusic() {
+      if (ambientNodes) return;
+      const master = audioCtx.createGain();
+      master.gain.value = 0.04; // very gentle by default
+      master.connect(audioCtx.destination);
+
+      const lowpass = audioCtx.createBiquadFilter();
+      lowpass.type = 'lowpass';
+      lowpass.frequency.value = 1400;
+      lowpass.Q.value = 0.7;
+      lowpass.connect(master);
+
+      const convolver = audioCtx.createConvolver();
+      convolver.buffer = createLightReverb(audioCtx);
+      const revGain = audioCtx.createGain();
+      revGain.gain.value = 0.22;
+      convolver.connect(revGain);
+      revGain.connect(lowpass);
+
+      // two gentle pad oscillators detuned slightly
+      const padA = audioCtx.createOscillator(); padA.type = 'sine'; padA.frequency.value = 110;
+      const padB = audioCtx.createOscillator(); padB.type = 'sine'; padB.frequency.value = 88.0;
+      const padAGain = audioCtx.createGain(); padAGain.gain.value = 0.4;
+      const padBGain = audioCtx.createGain(); padBGain.gain.value = 0.45;
+      const padFilter = audioCtx.createBiquadFilter(); padFilter.type = 'lowpass'; padFilter.frequency.value = 800;
+
+      const padAGainOut = audioCtx.createGain(); padAGainOut.gain.value = 0.5;
+      const padBGainOut = audioCtx.createGain(); padBGainOut.gain.value = 0.5;
+
+      padA.connect(padAGain); padB.connect(padBGain);
+      padAGain.connect(padFilter); padBGain.connect(padFilter);
+      padFilter.connect(padAGainOut); padFilter.connect(padBGainOut);
+      padAGainOut.connect(convolver); padBGainOut.connect(convolver);
+
+      // slow LFO to slightly modulate detune for organic feel
+      const lfo = audioCtx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.02;
+      const lfoGain = audioCtx.createGain(); lfoGain.gain.value = 6;
+      lfo.connect(lfoGain);
+      lfoGain.connect(padA.detune);
+      lfoGain.connect(padB.detune);
+
+      padA.start(); padB.start(); lfo.start();
+
+      ambientNodes = { padA, padB, padAGain, padBGain, padFilter, padAGainOut, padBGainOut, lfo, lfoGain, convolver, revGain, lowpass, master };
+      ambientOn = true;
+      updateAmbientUI();
+    }
+
+    function stopAmbientMusic() {
+      if (!ambientNodes) return;
+      const n = ambientNodes;
+      try {
+        n.padA.stop(); n.padB.stop(); n.lfo.stop();
+      } catch (e) {}
+      try { n.padA.disconnect(); n.padB.disconnect(); n.lfo.disconnect(); } catch (e) {}
+      try { n.padAGain.disconnect(); n.padBGain.disconnect(); } catch (e) {}
+      try { n.padFilter.disconnect(); n.convolver.disconnect(); n.revGain.disconnect(); n.lowpass.disconnect(); n.master.disconnect(); } catch (e) {}
+      ambientNodes = null;
+      ambientOn = false;
+      updateAmbientUI();
+    }
+
     function updateMuteUI() {
       if (isMuted) {
         muteBtn.classList.remove('text-green-300');
@@ -151,6 +238,22 @@
         muteBtn.querySelector('#muteSlash').style.display = 'none';
       }
     }
+
+    const ambientBtn = document.getElementById('ambientBtn');
+    function updateAmbientUI() {
+      if (!ambientBtn) return;
+      if (ambientOn) {
+        ambientBtn.classList.remove('text-white');
+        ambientBtn.classList.add('text-green-300');
+      } else {
+        ambientBtn.classList.remove('text-green-300');
+        ambientBtn.classList.add('text-white');
+      }
+    }
+
+    ambientBtn && ambientBtn.addEventListener('click', () => {
+      if (!ambientOn) startAmbientMusic(); else stopAmbientMusic();
+    });
 
     muteBtn.addEventListener('click', () => {
       if (isMuted) {
@@ -170,6 +273,11 @@
           stopBrownNoise();
           isMuted = true;
           updateMuteUI();
+        }
+        if (ambientOn) {
+          stopAmbientMusic();
+          ambientOn = false;
+          updateAmbientUI();
         }
       }
     }
