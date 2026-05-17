@@ -6,11 +6,11 @@
   <title>Sea Turtle Paradise</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body { margin: 0; overflow: hidden; background-color: #000714; touch-action: none; }
+    body { margin: 0; overflow: hidden; background-color: #021a19; touch-action: none; }
     canvas { display: block; width: 100vw; height: 100vh; cursor: crosshair; }
   </style>
 </head>
-<body class="relative w-full h-screen overflow-hidden bg-[#000714]">
+<body class="relative w-full h-screen overflow-hidden bg-[#021a19]">
 
   <div class="absolute top-8 right-8 flex flex-col gap-4 z-20 pointer-events-auto">
     <button
@@ -61,8 +61,12 @@
       title="Toggle Day/Night"
       aria-label="Toggle Day/Night"
     >
-      <svg viewBox="0 0 24 24" fill="none" class="w-6 h-6" stroke="currentColor" stroke-width="1.5">
-        <circle cx="12" cy="12" r="4" fill="currentColor" />
+      <svg viewBox="0 0 24 24" fill="none" class="w-6 h-6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 2 A 5 5 0 0 1 12 12 A 5 5 0 0 0 12 22" />
+        <circle cx="7" cy="7" r="1.5" fill="currentColor" stroke="none" />
+        <path d="M7 3.5v1M7 9.5v1M3.5 7h1M9.5 7h1M4.5 4.5l.7.7M9.5 9.5l-.7-.7M9.5 4.5l-.7.7M4.5 9.5l.7-.7" />
+        <path d="M17.5 14.5 A 2.5 2.5 0 1 0 19.5 18.5 A 3 3 0 1 1 17.5 14.5 Z" fill="currentColor" stroke="none" />
       </svg>
     </button>
   </div>
@@ -97,11 +101,11 @@
 
     function updateThemeUI() {
       if (theme === 'night') {
-        document.body.style.backgroundColor = '#000714';
+        document.body.style.backgroundColor = '#021a19';
         canvas.style.backgroundColor = 'transparent';
         dayNightBtn.className = "w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 bg-slate-900/50 border border-slate-600 text-white hover:bg-slate-800/60 shadow-lg";
       } else {
-        document.body.style.backgroundColor = '#bfeeea'; // light teal day
+        document.body.style.backgroundColor = '#008080'; // deep teal day body background
         canvas.style.backgroundColor = 'transparent';
         dayNightBtn.className = "w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 bg-teal-200 border border-teal-300 text-white shadow-[0_0_10px_rgba(56,189,248,0.25)] scale-110";
       }
@@ -290,13 +294,23 @@
       alpha: Math.random() * 0.3 + 0.05
     }));
 
+    const numSparkles = 250;
+    const sparkles = Array.from({ length: numSparkles }, () => ({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      size: Math.random() * 1.0 + 0.3,
+      phase: Math.random() * Math.PI * 2,
+      twinkleSpeed: Math.random() * 0.002 + 0.001
+    }));
+
     const PALETTES = {
       darkTeal: { backFinBase: '#178a84', backFinShadow: '#002020', neck: '#145c5c', headHi: '#8cdada', headMid: '#3bbdb8', headShad: '#003d3d', beak: '#001a1a', frontFinInner: '#003838', frontFinMid: '#3bbdb8', frontFinTip: '#002020', shellPeak: '#8cdada', shellMid: '#3bbdb8', shellBase: '#178a84', shellRim: '#003d3d' },
       babyBlue: { backFinBase: '#a0c8e8', backFinShadow: '#305070', neck: '#608eb0', headHi: '#e0f0ff', headMid: '#80b8e0', headShad: '#407090', beak: '#1a3040', frontFinInner: '#407090', frontFinMid: '#80b8e0', frontFinTip: '#305070', shellPeak: '#e0f0ff', shellMid: '#80b8e0', shellBase: '#6098c0', shellRim: '#407090' },
       cucumberGreen: { backFinBase: '#a8d8a8', backFinShadow: '#306030', neck: '#68a868', headHi: '#e0ffe0', headMid: '#80c880', headShad: '#408040', beak: '#1a401a', frontFinInner: '#408040', frontFinMid: '#80c880', frontFinTip: '#306030', shellPeak: '#e0ffe0', shellMid: '#80c880', shellBase: '#68b868', shellRim: '#408040' },
-      lightTeal: { backFinBase: '#48d1cc', backFinShadow: '#004c4c', neck: '#20b2aa', headHi: '#e0ffff', headMid: '#afeeee', headShad: '#008080', beak: '#004040', frontFinInner: '#008080', frontFinMid: '#afeeee', frontFinTip: '#004c4c', shellPeak: '#e0ffff', shellMid: '#afeeee', shellBase: '#48d1cc', shellRim: '#008080' }
+      lightTeal: { backFinBase: '#48d1cc', backFinShadow: '#004c4c', neck: '#20b2aa', headHi: '#e0ffff', headMid: '#afeeee', headShad: '#008080', beak: '#004040', frontFinInner: '#008080', frontFinMid: '#afeeee', frontFinTip: '#004c4c', shellPeak: '#e0ffff', shellMid: '#afeeee', shellBase: '#48d1cc', shellRim: '#008080' },
+      kempsRidley: { backFinBase: '#92a38b', backFinShadow: '#62735b', neck: '#92a38b', headHi: '#d5e6cf', headMid: '#a8ba9f', headShad: '#74876c', beak: '#3f4a39', frontFinInner: '#62735b', frontFinMid: '#92a38b', frontFinTip: '#53634c', shellPeak: '#c9d9c2', shellMid: '#92a38b', shellBase: '#798a72', shellRim: '#53634c' },
+      greenSeaTurtle: { backFinBase: '#5c8a5c', backFinShadow: '#2d4d2d', neck: '#6b996b', headHi: '#d9edd9', headMid: '#7ab37a', headShad: '#3d663d', beak: '#263326', frontFinInner: '#3d663d', frontFinMid: '#7ab37a', frontFinTip: '#2d4d2d', shellPeak: '#cce6cc', shellMid: '#5c8a5c', shellBase: '#3d663d', shellRim: '#1f331f' }
     };
-
 
     // Helper to reset turtle positions after resize/orientation
     function resetTurtlePositions() {
@@ -305,6 +319,10 @@
       turtles.forEach(t => {
         t.x = Math.random() * width;
         t.y = Math.random() * height;
+      });
+      sparkles.forEach(s => {
+        s.x = Math.random() * width;
+        s.y = Math.random() * height;
       });
     }
 
@@ -321,7 +339,13 @@
       { scaleMult: 0.28, timeOffset: 2400, palette: PALETTES.cucumberGreen, isBaby: true },
       { scaleMult: 0.30, timeOffset: 3600, palette: PALETTES.lightTeal, isBaby: true },
       { scaleMult: 0.25, timeOffset: 4800, palette: PALETTES.darkTeal, isBaby: true },
-      { scaleMult: 0.35, timeOffset: 6000, palette: PALETTES.babyBlue, isBaby: true }
+      { scaleMult: 0.35, timeOffset: 6000, palette: PALETTES.babyBlue, isBaby: true },
+      { scaleMult: 0.48, timeOffset: 9200, palette: PALETTES.kempsRidley },
+      { scaleMult: 0.45, timeOffset: 10500, palette: PALETTES.kempsRidley },
+      { scaleMult: 0.50, timeOffset: 11800, palette: PALETTES.kempsRidley },
+      { scaleMult: 0.85, timeOffset: 13000, palette: PALETTES.greenSeaTurtle, hasSpots: true },
+      { scaleMult: 0.80, timeOffset: 14500, palette: PALETTES.greenSeaTurtle },
+      { scaleMult: 0.75, timeOffset: 16000, palette: PALETTES.greenSeaTurtle }
     ].map(t => {
       const spd = t.isBaby ? (1.2 + Math.random() * 0.8) * t.scaleMult : (0.4 + Math.random() * 0.5) * t.scaleMult;
       return {
@@ -353,7 +377,7 @@
       ctx.restore();
     };
 
-    const drawBackFlippers = (ctx, time, palette) => {
+    const drawBackFlippers = (ctx, time, palette, hasSpots = false) => {
       const sweep = Math.sin(time * 0.002 - Math.PI / 4);
       for (const side of [-1, 1]) {
         ctx.save();
@@ -368,6 +392,19 @@
         grad.addColorStop(1, palette.backFinShadow);
         ctx.fillStyle = grad;
         ctx.fill();
+        
+        if (hasSpots) {
+          ctx.clip();
+          ctx.fillStyle = 'rgba(0, 30, 10, 0.6)';
+          for (let i = 0; i < 15; i++) {
+            ctx.beginPath();
+            const dx = (Math.sin(i * 7) * 0.5 + 0.5) * 40 * side;
+            const dy = (Math.cos(i * 13) * 0.5 + 0.5) * 100;
+            ctx.arc(dx, dy, 2.5 + Math.sin(i) * 1.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        
         ctx.restore();
       }
     };
@@ -410,7 +447,7 @@
       ctx.restore();
     };
 
-    const drawFrontFlippers = (ctx, time, palette) => {
+    const drawFrontFlippers = (ctx, time, palette, hasSpots = false) => {
       const sweep = Math.sin(time * 0.0015);
       const flex = Math.cos(time * 0.0015);
       for (const side of [-1, 1]) {
@@ -432,12 +469,13 @@
         ctx.fill();
 
         ctx.clip();
-        ctx.fillStyle = 'rgba(0,0,0,0.1)';
+        ctx.fillStyle = hasSpots ? 'rgba(0, 30, 10, 0.6)' : 'rgba(0,0,0,0.1)';
         for (let i = 0; i < 25; i++) {
           ctx.beginPath();
           const dx = (Math.sin(i * 11) * 0.5 + 0.5) * 220 * side;
           const dy = (Math.cos(i * 19) * 0.5 + 0.5) * 120;
-          ctx.arc(dx, dy, 2 + Math.sin(i) * 2, 0, Math.PI * 2);
+          const radius = hasSpots ? (3.5 + Math.sin(i) * 2.5) : (2 + Math.sin(i) * 2);
+          ctx.arc(dx, dy, radius, 0, Math.PI * 2);
           ctx.fill();
         }
         ctx.restore();
@@ -462,6 +500,11 @@
       ctx.shadowBlur = 15;
       ctx.fill();
       ctx.shadowBlur = 0;
+
+      // Added explicit dark stroke to ensure shading around the edges of all shells
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = 'rgba(0, 15, 5, 0.5)';
+      ctx.stroke();
 
       for (let i = -2; i <= 2; i++) {
         ctx.beginPath();
@@ -524,9 +567,9 @@
       ctx.scale(scale, scale);
 
       drawShadow(ctx);
-      drawBackFlippers(ctx, time, t.palette);
+      drawBackFlippers(ctx, time, t.palette, t.hasSpots);
       drawHead(ctx, time, t.palette);
-      drawFrontFlippers(ctx, time, t.palette);
+      drawFrontFlippers(ctx, time, t.palette, t.hasSpots);
       drawShell(ctx, time, t.palette);
 
       ctx.restore();
@@ -541,10 +584,44 @@
 
       // 1. Background
       const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
-      bgGrad.addColorStop(0, '#001e36');
-      bgGrad.addColorStop(1, '#000714');
+      if (theme === 'night') {
+        bgGrad.addColorStop(0, '#023838'); 
+        bgGrad.addColorStop(1, '#000f0f'); 
+      } else {
+        bgGrad.addColorStop(0, '#008b8b'); 
+        bgGrad.addColorStop(1, '#003333'); 
+      }
       ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, width, height);
+
+      // 1.1 Vignette Shading (Day Mode Only)
+      if (theme === 'day') {
+        ctx.save();
+        const vignetteGrad = ctx.createRadialGradient(
+          width / 2, height / 2, Math.min(width, height) * 0.3,
+          width / 2, height / 2, Math.max(width, height) * 0.8
+        );
+        vignetteGrad.addColorStop(0, 'rgba(0,0,0,0)');
+        vignetteGrad.addColorStop(1, 'rgba(0, 20, 20, 0.4)'); // Dark teal/black edge shadow
+        ctx.fillStyle = vignetteGrad;
+        ctx.fillRect(0, 0, width, height);
+        ctx.restore();
+      }
+
+      // 1.5 Sparkles (Sun glimmers)
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      sparkles.forEach(s => {
+        // Calculate twinkle alpha based on time and phase
+        const alpha = (Math.sin(time * s.twinkleSpeed + s.phase) + 1) * 0.5 * 0.95;
+        if (alpha > 0.05) {
+          ctx.fillStyle = `rgba(255, 215, 0, ${alpha})`;
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
+      ctx.restore();
 
       // 2. God Rays
       ctx.save();
@@ -570,17 +647,22 @@
         ctx.save();
         ctx.translate(f.x, f.y);
         ctx.rotate(f.rot);
-        ctx.shadowColor = 'rgba(0, 10, 20, 0.5)';
-        ctx.shadowBlur = 6;
-        ctx.shadowOffsetY = 3;
+        
+        // Enhanced Drop Shadow for Depth
+        ctx.shadowColor = 'rgba(0, 15, 30, 0.7)'; // Darker, richer shadow
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetY = 4;
 
-        const rindGrad = ctx.createRadialGradient(0, 0, f.size * 0.8, 0, 0, f.size);
-        rindGrad.addColorStop(0, '#1c4a25');
-        rindGrad.addColorStop(1, '#0b2612');
+        // Richer, more contrasting rind gradient
+        const rindGrad = ctx.createRadialGradient(-f.size*0.2, -f.size*0.2, f.size * 0.4, 0, 0, f.size);
+        rindGrad.addColorStop(0, '#2d6a3c'); // Lighter green highlight on the edge
+        rindGrad.addColorStop(0.6, '#143d1f'); // Mid-tone dark green
+        rindGrad.addColorStop(1, '#051709'); // Very dark, almost black green for the shadowed edge
         ctx.fillStyle = rindGrad;
         ctx.beginPath();
         for (let i = 0; i <= Math.PI * 2 + 0.1; i += 0.3) {
-          const r = f.size + Math.sin(i * 5) * (f.size * 0.04);
+          // Slightly bumpier rind texture
+          const r = f.size + Math.sin(i * 7) * (f.size * 0.05);
           if (i === 0) ctx.moveTo(r, 0); else ctx.lineTo(Math.cos(i) * r, Math.sin(i) * r);
         }
         ctx.closePath();
@@ -590,33 +672,45 @@
         ctx.shadowOffsetY = 0;
         ctx.shadowColor = 'transparent';
 
-        const fleshGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, f.size * 0.9);
-        fleshGrad.addColorStop(0, '#f0fcf2');
-        fleshGrad.addColorStop(0.5, '#d8f2df');
-        fleshGrad.addColorStop(1, '#81cf9d');
+        // More pronounced shading on the flesh
+        const fleshGrad = ctx.createRadialGradient(-f.size*0.1, -f.size*0.1, 0, 0, 0, f.size * 0.9);
+        fleshGrad.addColorStop(0, '#ffffff'); // Bright white center highlight
+        fleshGrad.addColorStop(0.4, '#e0f7e6'); // Pale green mid-tone
+        fleshGrad.addColorStop(0.8, '#a3e0b8'); // Solid cucumber flesh color
+        fleshGrad.addColorStop(1, '#5db37a'); // Darker inner shadow near the rind
         ctx.fillStyle = fleshGrad;
         ctx.beginPath();
-        ctx.arc(0, 0, f.size * 0.9, 0, Math.PI * 2);
+        ctx.arc(0, 0, f.size * 0.88, 0, Math.PI * 2);
         ctx.fill();
 
+        // Shaded seed cavities
         for (let i = 0; i < 3; i++) {
           const angle = (Math.PI * 2 / 3) * i;
           ctx.save();
           ctx.rotate(angle);
           
-          ctx.fillStyle = 'rgba(180, 230, 195, 0.6)';
+          // Cavity background with inner shadow
+          const cavityGrad = ctx.createRadialGradient(f.size * 0.35, 0, 0, f.size * 0.35, 0, f.size * 0.25);
+          cavityGrad.addColorStop(0, 'rgba(150, 210, 170, 0.4)'); // Translucent center
+          cavityGrad.addColorStop(1, 'rgba(100, 180, 130, 0.8)'); // Darker edge for depth
+
+          ctx.fillStyle = cavityGrad;
           ctx.beginPath();
           ctx.moveTo(0, 0);
           ctx.bezierCurveTo(f.size * 0.3, f.size * 0.25, f.size * 0.6, f.size * 0.35, f.size * 0.5, 0);
           ctx.bezierCurveTo(f.size * 0.6, -f.size * 0.35, f.size * 0.3, -f.size * 0.25, 0, 0);
           ctx.fill();
 
-          ctx.fillStyle = '#fafffb';
+          // Seeds with slight drop shadows
+          ctx.shadowColor = 'rgba(0,0,0,0.2)';
+          ctx.shadowBlur = 2;
+          ctx.shadowOffsetY = 1;
+          ctx.fillStyle = '#fffff0'; // Slightly off-white seeds
           ctx.beginPath();
-          ctx.ellipse(f.size * 0.35, f.size * 0.12, f.size * 0.1, f.size * 0.05, 0.3, 0, Math.PI * 2);
+          ctx.ellipse(f.size * 0.35, f.size * 0.12, f.size * 0.08, f.size * 0.04, 0.3, 0, Math.PI * 2);
           ctx.fill();
           ctx.beginPath();
-          ctx.ellipse(f.size * 0.35, -f.size * 0.12, f.size * 0.1, f.size * 0.05, -0.3, 0, Math.PI * 2);
+          ctx.ellipse(f.size * 0.35, -f.size * 0.12, f.size * 0.08, f.size * 0.04, -0.3, 0, Math.PI * 2);
           ctx.fill();
           ctx.restore();
         }
@@ -779,7 +873,7 @@
       const clampedX = Math.max(foodPadding * -1, Math.min(canvas.width + foodPadding, x));
       const clampedY = Math.max(foodPadding * -1, Math.min(canvas.height + foodPadding, y));
       if (mode === 'food') {
-        gameState.food.push({ x: clampedX, y: clampedY, size: 0, targetSize: 15, rot: Math.random() * Math.PI * 2 });
+        gameState.food.push({ x: clampedX, y: clampedY, size: 0, targetSize: 7, rot: Math.random() * Math.PI * 2 });
         // mark waves created by food drops so turtles won't be scared by them
         gameState.waves.push({ x: clampedX, y: clampedY, age: 0, life: 60, speed: 1.5, source: 'food' });
       } else {
