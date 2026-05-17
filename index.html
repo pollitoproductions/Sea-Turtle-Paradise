@@ -377,12 +377,19 @@
       ctx.restore();
     };
 
+    // Helper to calculate a point on a cubic bezier curve for perfect edge tracing
+    const getBezierPoint = (t, p0, p1, p2, p3) => {
+      const cT = 1 - t;
+      return (Math.pow(cT, 3) * p0) + (3 * Math.pow(cT, 2) * t * p1) + (3 * cT * Math.pow(t, 2) * p2) + (Math.pow(t, 3) * p3);
+    };
+
     const drawBackFlippers = (ctx, time, palette, hasSpots = false) => {
       const sweep = Math.sin(time * 0.002 - Math.PI / 4);
       for (const side of [-1, 1]) {
         ctx.save();
         ctx.translate(side * 50, 120);
         ctx.rotate(side * (-sweep * 0.15 - 0.1));
+        
         ctx.beginPath();
         ctx.moveTo(0, 0);
         ctx.bezierCurveTo(side * 50, 20, side * 70, 90, side * 40, 120);
@@ -393,14 +400,70 @@
         ctx.fillStyle = grad;
         ctx.fill();
         
-        if (hasSpots) {
-          ctx.clip();
-          ctx.fillStyle = 'rgba(0, 30, 10, 0.6)';
-          for (let i = 0; i < 15; i++) {
+        ctx.clip();
+        // Use the turtle's own shadow color for perfectly blended spots
+        ctx.fillStyle = palette.headShad; 
+        
+        // Outer edge spots
+        for (let i = 1; i <= 8; i++) {
+          const t = i / 9;
+          const px = getBezierPoint(t, 0, side * 50, side * 70, side * 40);
+          const py = getBezierPoint(t, 0, 20, 90, 120);
+          const r = 2.5 + t * 2.0;
+          ctx.beginPath();
+          for (let j = 0; j < 6; j++) {
+            const angle = (Math.PI * 2 / 6) * j + (i * side);
+            // Use math to create a stable but irregular, blocky scale shape
+            const dist = r * (0.6 + 0.5 * Math.abs(Math.sin(i * 3 + j * 5)));
+            const sx = px - side * 5 + Math.cos(angle) * dist;
+            const sy = py + Math.sin(angle) * dist;
+            if (j === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+          }
+          ctx.fill();
+        }
+        
+        // Inner edge spots
+        for (let i = 1; i <= 7; i++) {
+          const t = i / 8;
+          const px = getBezierPoint(t, side * 40, side * 10, side * -10, 0);
+          const py = getBezierPoint(t, 120, 100, 40, 0);
+          const r = 1.5 + (1-t) * 1.5;
+          ctx.beginPath();
+          for (let j = 0; j < 5; j++) {
+            const angle = (Math.PI * 2 / 5) * j + (i * 1.2 * side);
+            const dist = r * (0.6 + 0.5 * Math.abs(Math.sin(i * 4 + j * 2)));
+            const sx = px + side * 5 + Math.cos(angle) * dist;
+            const sy = py - 3 + Math.sin(angle) * dist;
+            if (j === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+          }
+          ctx.fill();
+        }
+
+        // Interior / Middle spots
+        for (let u of [0.35, 0.65]) {
+          const count = u === 0.35 ? 7 : 6;
+          for (let i = 1; i <= count; i++) {
+            const t = (i + (u === 0.35 ? 0 : 0.5)) / (count + 1);
+            if (t >= 1.0) continue;
+            
+            const pxOut = getBezierPoint(t, 0, side * 50, side * 70, side * 40);
+            const pyOut = getBezierPoint(t, 0, 20, 90, 120);
+            const pxIn = getBezierPoint(1-t, side * 40, side * 10, side * -10, 0);
+            const pyIn = getBezierPoint(1-t, 120, 100, 40, 0);
+
+            // Interpolate perfectly between the outer and inner curves
+            const px = pxOut + (pxIn - pxOut) * u;
+            const py = pyOut + (pyIn - pyOut) * u;
+            const r = 2.5 + Math.sin(t * Math.PI) * 2.5; 
+
             ctx.beginPath();
-            const dx = (Math.sin(i * 7) * 0.5 + 0.5) * 40 * side;
-            const dy = (Math.cos(i * 13) * 0.5 + 0.5) * 100;
-            ctx.arc(dx, dy, 2.5 + Math.sin(i) * 1.5, 0, Math.PI * 2);
+            for (let j = 0; j < 5; j++) {
+              const angle = (Math.PI * 2 / 5) * j + (i * side * u);
+              const dist = r * (0.7 + 0.4 * Math.abs(Math.sin(i * 3 + j * 2 + u * 10)));
+              const sx = px + Math.cos(angle) * dist;
+              const sy = py + Math.sin(angle) * dist;
+              if (j === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+            }
             ctx.fill();
           }
         }
@@ -455,10 +518,18 @@
         ctx.translate(side * 75, -50);
         ctx.rotate(side * (sweep * 0.25 + 0.15));
         
+        const cp1x = side * 90, cp1y = -20;
+        const cp2x = side * 200 + flex * 15, cp2y = 30 + sweep * 25;
+        const endX = side * 240, endY = 130;
+        
+        const cp3x = side * 150, cp3y = 110;
+        const cp4x = side * 50, cp4y = 70;
+        const startX2 = 0, startY2 = 50;
+
         ctx.beginPath();
         ctx.moveTo(0, 0);
-        ctx.bezierCurveTo(side * 90, -20, side * 200 + flex * 15, 30 + sweep * 25, side * 240, 130);
-        ctx.bezierCurveTo(side * 150, 110, side * 50, 70, 0, 50);
+        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, endX, endY);
+        ctx.bezierCurveTo(cp3x, cp3y, cp4x, cp4y, startX2, startY2);
         ctx.closePath();
 
         const grad = ctx.createLinearGradient(0, -20, side * 240, 130);
@@ -469,15 +540,76 @@
         ctx.fill();
 
         ctx.clip();
-        ctx.fillStyle = hasSpots ? 'rgba(0, 30, 10, 0.6)' : 'rgba(0,0,0,0.1)';
-        for (let i = 0; i < 25; i++) {
+        // Use the turtle's own shadow color for perfectly blended spots
+        ctx.fillStyle = palette.headShad;
+
+        // Leading edge spots
+        for (let i = 1; i <= 15; i++) {
+          const t = i / 16;
+          const px = getBezierPoint(t, 0, cp1x, cp2x, endX);
+          const py = getBezierPoint(t, 0, cp1y, cp2y, endY);
+          const r = 2.5 + t * 3.5;
           ctx.beginPath();
-          const dx = (Math.sin(i * 11) * 0.5 + 0.5) * 220 * side;
-          const dy = (Math.cos(i * 19) * 0.5 + 0.5) * 120;
-          const radius = hasSpots ? (3.5 + Math.sin(i) * 2.5) : (2 + Math.sin(i) * 2);
-          ctx.arc(dx, dy, radius, 0, Math.PI * 2);
+          for(let j = 0; j < 6; j++) {
+            const angle = (Math.PI * 2 / 6) * j + (i * 0.5 * side);
+            const dist = r * (0.6 + 0.5 * Math.abs(Math.sin(i * 7 + j * 3)));
+            const sx = px - side * 6 + Math.cos(angle) * dist;
+            const sy = py + 6 + Math.sin(angle) * dist;
+            if (j === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+          }
           ctx.fill();
         }
+
+        // Trailing edge spots
+        for (let i = 1; i <= 13; i++) {
+          const t = i / 14;
+          const px = getBezierPoint(t, endX, cp3x, cp4x, startX2);
+          const py = getBezierPoint(t, endY, cp3y, cp4y, startY2);
+          const r = 2 + t * 2; 
+          ctx.beginPath();
+          for(let j = 0; j < 5; j++) {
+            const angle = (Math.PI * 2 / 5) * j + (i * 0.8 * side);
+            const dist = r * (0.6 + 0.5 * Math.abs(Math.sin(i * 4 + j * 2)));
+            const sx = px - side * 2 + Math.cos(angle) * dist;
+            const sy = py - 6 + Math.sin(angle) * dist;
+            if (j === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+          }
+          ctx.fill();
+        }
+
+        // Interior / Middle veins
+        const numVeins = 3;
+        for (let v = 1; v <= numVeins; v++) {
+          const u = v / (numVeins + 1); 
+          const spotCount = 15 - Math.abs(v - 2) * 3; 
+          for (let i = 1; i <= spotCount; i++) {
+            // Offset the rows slightly so they interlock
+            const t = (i + (v % 2) * 0.5) / (spotCount + 1);
+            if (t >= 1.0) continue;
+
+            const px1 = getBezierPoint(t, 0, cp1x, cp2x, endX);
+            const py1 = getBezierPoint(t, 0, cp1y, cp2y, endY);
+            const px2 = getBezierPoint(1-t, endX, cp3x, cp4x, startX2);
+            const py2 = getBezierPoint(1-t, endY, cp3y, cp4y, startY2);
+
+            // Interpolate perfectly between the leading and trailing edges
+            const px = px1 + (px2 - px1) * u;
+            const py = py1 + (py2 - py1) * u;
+            // Make spots larger in the thick middle section of the flipper
+            const r = 2.5 + Math.sin(t * Math.PI) * 4.5; 
+
+            ctx.beginPath();
+            for(let j = 0; j < 6; j++) {
+              const angle = (Math.PI * 2 / 6) * j + (i * 0.6 * side * u);
+              const dist = r * (0.7 + 0.4 * Math.abs(Math.sin(i * 5 + j * 3 + v * 7)));
+              const sx = px + Math.cos(angle) * dist;
+              const sy = py + Math.sin(angle) * dist;
+              if (j === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+            }
+            ctx.fill();
+          }
+        }
+        
         ctx.restore();
       }
     };
